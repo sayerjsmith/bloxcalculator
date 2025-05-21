@@ -3,114 +3,108 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Roblox Game Stats Viewer</title>
+  <title>Robux ⇄ USD Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: sans-serif;
-      background: #121212;
-      color: #fff;
-      text-align: center;
+      background: #fdf3d5;
+      font-family: 'Comic Neue', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       padding: 2rem;
+      color: #222;
     }
-    input, button {
-      padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-    }
-    input {
-      width: 300px;
-      max-width: 80%;
-    }
-    button {
-      background-color: #ff4757;
-      color: white;
-      cursor: pointer;
-      margin-left: 0.5rem;
-    }
-    #stats {
-      margin-top: 2rem;
-    }
-    .game-card {
-      background: #1e1e2f;
-      padding: 1.5rem;
-      border-radius: 12px;
-      max-width: 500px;
-      margin: 1rem auto;
-    }
-    img {
-      max-width: 100%;
-      border-radius: 8px;
+
+    h1 {
+      font-size: 2.5rem;
       margin-bottom: 1rem;
+      color: #ff6b00;
+    }
+
+    .converter {
+      background: #fffbe0;
+      padding: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .input-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 1.2rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1.2rem;
+      border-radius: 12px;
+      border: 2px solid #ffd966;
+      background-color: #fffdf5;
+      text-align: center;
+    }
+
+    .result {
+      font-size: 1.4rem;
+      margin-top: 1rem;
+      color: #008000;
+    }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <h1>🔍 Roblox Game Stats Viewer</h1>
-  <input type="text" id="gameInput" placeholder="Enter game name or Place ID" />
-  <button onclick="searchGame()">Search</button>
+  <h1>💸 Robux ⇄ USD Calculator</h1>
 
-  <div id="stats"></div>
+  <div class="converter">
+    <div class="input-group">
+      <label for="usd">USD ($)</label>
+      <input type="number" id="usd" placeholder="Enter dollars" oninput="convertFromUSD()" />
+    </div>
+
+    <div class="input-group">
+      <label for="robux">Robux (R$)</label>
+      <input type="number" id="robux" placeholder="Enter robux" oninput="convertFromRobux()" />
+    </div>
+
+    <div class="result" id="rateInfo">
+      Using rate: $1 = 80 Robux
+    </div>
+  </div>
+
+  <footer>
+    Made for GitHub Pages 💻 | No backend, no tracking.
+  </footer>
 
   <script>
-    async function searchGame() {
-      const input = document.getElementById('gameInput').value.trim();
-      const statsDiv = document.getElementById('stats');
-      statsDiv.innerHTML = '🔄 Loading...';
+    const RATE = 80;
 
-      let universeId;
+    function convertFromUSD() {
+      const usd = parseFloat(document.getElementById('usd').value);
+      if (!isNaN(usd)) {
+        document.getElementById('robux').value = (usd * RATE).toFixed(0);
+      } else {
+        document.getElementById('robux').value = '';
+      }
+    }
 
-      try {
-        if (!input) throw new Error("Please enter a game name or Place ID.");
-
-        if (!isNaN(Number(input))) {
-          // Input is a Place ID
-          const placeId = input;
-          const placeDetailsRes = await fetch(`https://games.roblox.com/v1/games/multiget-place-details?placeIds=${placeId}`);
-          const placeDetails = await placeDetailsRes.json();
-          if (!placeDetails || placeDetails.length === 0) throw new Error("Place not found.");
-          universeId = placeDetails[0].universeId;
-        } else {
-          // Input is a game name
-          const searchRes = await fetch(`https://apis.roblox.com/games-autocomplete/v1/get-suggestion/${encodeURIComponent(input)}`);
-          const searchData = await searchRes.json();
-          if (!searchData || !searchData.games || searchData.games.length === 0) throw new Error("Game not found.");
-          const placeId = searchData.games[0].placeId;
-          const placeDetailsRes = await fetch(`https://games.roblox.com/v1/games/multiget-place-details?placeIds=${placeId}`);
-          const placeDetails = await placeDetailsRes.json();
-          if (!placeDetails || placeDetails.length === 0) throw new Error("Place details not found.");
-          universeId = placeDetails[0].universeId;
-        }
-
-        const [detailsRes, votesRes, thumbRes] = await Promise.all([
-          fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`),
-          fetch(`https://games.roblox.com/v1/games/votes?universeIds=${universeId}`),
-          fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`)
-        ]);
-
-        const details = await detailsRes.json();
-        const votes = await votesRes.json();
-        const thumbs = await thumbRes.json();
-
-        const game = details.data[0];
-        const vote = votes.data[0];
-        const thumb = thumbs.data[0].imageUrl;
-
-        if (!game) throw new Error("Game data missing.");
-
-        statsDiv.innerHTML = `
-          <div class="game-card">
-            <img src="${thumb}" alt="Thumbnail" />
-            <h2>${game.name}</h2>
-            <p><strong>Creator:</strong> ${game.creator.name}</p>
-            <p><strong>Visits:</strong> ${game.visits.toLocaleString()}</p>
-            <p><strong>Likes:</strong> ${vote.upVotes.toLocaleString()} 👍</p>
-            <p><strong>Dislikes:</strong> ${vote.downVotes.toLocaleString()} 👎</p>
-            <p><strong>Playing Now:</strong> ${game.playing.toLocaleString()}</p>
-          </div>
-        `;
-      } catch (err) {
-        statsDiv.innerHTML = `❌ Error: ${err.message}`;
+    function convertFromRobux() {
+      const robux = parseFloat(document.getElementById('robux').value);
+      if (!isNaN(robux)) {
+        document.getElementById('usd').value = (robux / RATE).toFixed(2);
+      } else {
+        document.getElementById('usd').value = '';
       }
     }
   </script>
