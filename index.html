@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Roblox Game Stats</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #1e1e2f;
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+    }
+    input, button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background-color: #ff4757;
+      color: white;
+      cursor: pointer;
+    }
+    #stats {
+      margin-top: 2rem;
+    }
+    .game-card {
+      background: #2f2f44;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Roblox Game Stats Viewer</h1>
+  <input type="text" id="gameInput" placeholder="Enter game ID (or name soon)" />
+  <button onclick="fetchGameStats()">Search</button>
+
+  <div id="stats"></div>
+
+  <script>
+    async function fetchGameStats() {
+      const gameId = document.getElementById('gameInput').value.trim();
+      const statsDiv = document.getElementById('stats');
+      statsDiv.innerHTML = 'Loading...';
+
+      try {
+        const [details, voteData, playData] = await Promise.all([
+          fetch(`https://games.roblox.com/v1/games?universeIds=${gameId}`).then(res => res.json()),
+          fetch(`https://games.roblox.com/v1/games/votes?universeIds=${gameId}`).then(res => res.json()),
+          fetch(`https://games.roblox.com/v1/games/${gameId}/servers/Public?limit=1&sortOrder=Asc`).then(res => res.json())
+        ]);
+
+        const game = details.data[0];
+        const votes = voteData.data[0];
+
+        if (!game) throw new Error('Game not found');
+
+        statsDiv.innerHTML = `
+          <div class="game-card">
+            <h2>${game.name}</h2>
+            <p><strong>Creator:</strong> ${game.creator.name}</p>
+            <p><strong>Visits:</strong> ${game.visits.toLocaleString()}</p>
+            <p><strong>Likes:</strong> ${votes.upVotes.toLocaleString()} 👍</p>
+            <p><strong>Dislikes:</strong> ${votes.downVotes.toLocaleString()} 👎</p>
+            <p><strong>Playing Now:</strong> ${game.playing.toLocaleString()}</p>
+          </div>
+        `;
+      } catch (err) {
+        statsDiv.innerHTML = `⚠️ Error: ${err.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
