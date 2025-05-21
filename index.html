@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Roblox Game Stats</title>
+  <title>Roblox Game Stats Viewer</title>
   <style>
     body {
       font-family: sans-serif;
-      background: #1e1e2f;
+      background: #121212;
       color: #fff;
       text-align: center;
       padding: 2rem;
@@ -18,59 +18,86 @@
       border-radius: 8px;
       border: none;
     }
+    input {
+      width: 300px;
+      max-width: 80%;
+    }
     button {
       background-color: #ff4757;
       color: white;
       cursor: pointer;
+      margin-left: 0.5rem;
     }
     #stats {
       margin-top: 2rem;
     }
     .game-card {
-      background: #2f2f44;
-      padding: 1rem;
+      background: #1e1e2f;
+      padding: 1.5rem;
       border-radius: 12px;
-      margin-top: 1rem;
+      max-width: 500px;
+      margin: 1rem auto;
+    }
+    img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
   <h1>🔍 Roblox Game Stats Viewer</h1>
-  <input type="text" id="gameInput" placeholder="Enter game ID (or name soon)" />
-  <button onclick="fetchGameStats()">Search</button>
+  <input type="text" id="gameInput" placeholder="Enter game name or ID" />
+  <button onclick="searchGame()">Search</button>
 
   <div id="stats"></div>
 
   <script>
-    async function fetchGameStats() {
-      const gameId = document.getElementById('gameInput').value.trim();
+    async function searchGame() {
+      const input = document.getElementById('gameInput').value.trim();
       const statsDiv = document.getElementById('stats');
-      statsDiv.innerHTML = 'Loading...';
+      statsDiv.innerHTML = '🔄 Loading...';
+
+      let universeId = input;
 
       try {
-        const [details, voteData, playData] = await Promise.all([
-          fetch(`https://games.roblox.com/v1/games?universeIds=${gameId}`).then(res => res.json()),
-          fetch(`https://games.roblox.com/v1/games/votes?universeIds=${gameId}`).then(res => res.json()),
-          fetch(`https://games.roblox.com/v1/games/${gameId}/servers/Public?limit=1&sortOrder=Asc`).then(res => res.json())
+        // If not a number, treat as name
+        if (isNaN(Number(input))) {
+          const searchRes = await fetch(`https://games.roblox.com/v1/games/list?keyword=${encodeURIComponent(input)}&sortOrder=Asc&limit=1`);
+          const searchData = await searchRes.json();
+          if (!searchData.data || searchData.data.length === 0) throw new Error("Game not found");
+          universeId = searchData.data[0].id;
+        }
+
+        const [detailsRes, votesRes, thumbRes] = await Promise.all([
+          fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`),
+          fetch(`https://games.roblox.com/v1/games/votes?universeIds=${universeId}`),
+          fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`)
         ]);
 
-        const game = details.data[0];
-        const votes = voteData.data[0];
+        const details = await detailsRes.json();
+        const votes = await votesRes.json();
+        const thumbs = await thumbRes.json();
 
-        if (!game) throw new Error('Game not found');
+        const game = details.data[0];
+        const vote = votes.data[0];
+        const thumb = thumbs.data[0].imageUrl;
+
+        if (!game) throw new Error("Game data missing");
 
         statsDiv.innerHTML = `
           <div class="game-card">
+            <img src="${thumb}" alt="Thumbnail" />
             <h2>${game.name}</h2>
             <p><strong>Creator:</strong> ${game.creator.name}</p>
             <p><strong>Visits:</strong> ${game.visits.toLocaleString()}</p>
-            <p><strong>Likes:</strong> ${votes.upVotes.toLocaleString()} 👍</p>
-            <p><strong>Dislikes:</strong> ${votes.downVotes.toLocaleString()} 👎</p>
+            <p><strong>Likes:</strong> ${vote.upVotes.toLocaleString()} 👍</p>
+            <p><strong>Dislikes:</strong> ${vote.downVotes.toLocaleString()} 👎</p>
             <p><strong>Playing Now:</strong> ${game.playing.toLocaleString()}</p>
           </div>
         `;
       } catch (err) {
-        statsDiv.innerHTML = `⚠️ Error: ${err.message}`;
+        statsDiv.innerHTML = `❌ Error: ${err.message}`;
       }
     }
   </script>
