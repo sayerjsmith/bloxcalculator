@@ -47,7 +47,7 @@
 </head>
 <body>
   <h1>🔍 Roblox Game Stats Viewer</h1>
-  <input type="text" id="gameInput" placeholder="Enter game name or ID" />
+  <input type="text" id="gameInput" placeholder="Enter game name or Place ID" />
   <button onclick="searchGame()">Search</button>
 
   <div id="stats"></div>
@@ -58,15 +58,28 @@
       const statsDiv = document.getElementById('stats');
       statsDiv.innerHTML = '🔄 Loading...';
 
-      let universeId = input;
+      let universeId;
 
       try {
-        // If not a number, treat as name
-        if (isNaN(Number(input))) {
-          const searchRes = await fetch(`https://games.roblox.com/v1/games/list?keyword=${encodeURIComponent(input)}&sortOrder=Asc&limit=1`);
+        if (!input) throw new Error("Please enter a game name or Place ID.");
+
+        if (!isNaN(Number(input))) {
+          // Input is a Place ID
+          const placeId = input;
+          const placeDetailsRes = await fetch(`https://games.roblox.com/v1/games/multiget-place-details?placeIds=${placeId}`);
+          const placeDetails = await placeDetailsRes.json();
+          if (!placeDetails || placeDetails.length === 0) throw new Error("Place not found.");
+          universeId = placeDetails[0].universeId;
+        } else {
+          // Input is a game name
+          const searchRes = await fetch(`https://apis.roblox.com/games-autocomplete/v1/get-suggestion/${encodeURIComponent(input)}`);
           const searchData = await searchRes.json();
-          if (!searchData.data || searchData.data.length === 0) throw new Error("Game not found");
-          universeId = searchData.data[0].id;
+          if (!searchData || !searchData.games || searchData.games.length === 0) throw new Error("Game not found.");
+          const placeId = searchData.games[0].placeId;
+          const placeDetailsRes = await fetch(`https://games.roblox.com/v1/games/multiget-place-details?placeIds=${placeId}`);
+          const placeDetails = await placeDetailsRes.json();
+          if (!placeDetails || placeDetails.length === 0) throw new Error("Place details not found.");
+          universeId = placeDetails[0].universeId;
         }
 
         const [detailsRes, votesRes, thumbRes] = await Promise.all([
@@ -83,7 +96,7 @@
         const vote = votes.data[0];
         const thumb = thumbs.data[0].imageUrl;
 
-        if (!game) throw new Error("Game data missing");
+        if (!game) throw new Error("Game data missing.");
 
         statsDiv.innerHTML = `
           <div class="game-card">
