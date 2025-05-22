@@ -99,6 +99,7 @@
       <label for="currency">Currency</label>
       <select id="currency" onchange="updateCurrency()">
         <option value="USD" selected>🇺🇸 USD ($)</option>
+        <option value="CAD">🇨🇦 CAD (C$)</option>
         <option value="EUR">🇪🇺 EUR (€)</option>
         <option value="GBP">🇬🇧 GBP (£)</option>
         <option value="INR">🇮🇳 INR (₹)</option>
@@ -112,7 +113,7 @@
     </div>
 
     <div class="input-group">
-      <label for="usd">Amount (<span id="currencySymbol">$</span>)</label>
+      <label for="usd">Amount (<span id="currencyLabel">$</span>)</label>
       <input type="text" id="usd" placeholder="Enter amount (e.g. 1.5k)" oninput="convertFromUSD()" />
     </div>
 
@@ -134,6 +135,7 @@
 
     const currencyRates = {
       USD: { rate: 1, symbol: '$' },
+      CAD: { rate: 0.73, symbol: 'C$' },
       EUR: { rate: 1.09, symbol: '€' },
       GBP: { rate: 1.27, symbol: '£' },
       INR: { rate: 0.012, symbol: '₹' },
@@ -156,7 +158,7 @@
     function updateCurrency() {
       currencyCode = document.getElementById('currency').value;
       currencySymbol = currencyRates[currencyCode].symbol;
-      document.getElementById("currencySymbol").textContent = currencySymbol;
+      document.getElementById("currencyLabel").textContent = currencySymbol;
       updateRateText();
       convertFromUSD();
     }
@@ -170,12 +172,7 @@
 
     function parseShorthand(value) {
       value = value.toLowerCase().replace(/,/g, '');
-      const suffixes = {
-        k: 1e3,
-        m: 1e6,
-        b: 1e9,
-        t: 1e12
-      };
+      const suffixes = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 };
       const match = value.match(/^([\d\.]+)([kmbt]?)$/);
       if (!match) return NaN;
       const num = parseFloat(match[1]);
@@ -216,7 +213,6 @@
       }
     }
 
-    // Start everything
     updateCurrency();
   </script>
 </body>
